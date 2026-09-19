@@ -3,7 +3,8 @@ const contactService = require('./contact.service');
 
 const createContact = async (req, res, next) => {
     try {
-        const result = await contactService.addContactService(req.body.chatId);
+        const { chatId, name, username } = req.body;
+        const result = await contactService.addContactService(chatId, name, username);
         return res.status(result.status).json({ success: result.success, message: result.message });
     } catch (error) {
         next(error);

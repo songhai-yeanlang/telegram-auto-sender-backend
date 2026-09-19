@@ -6,5 +6,5 @@ const { createContactSchema, updateContactSchema } = require('./contact.validati
 
 router.post('/', validate(createContactSchema), contactController.createContact);
 router.get('/getAll', contactController.getAllContacts);
-router.put('/updateStatus', validate(updateContactSchema), contactController.updateStatus);
+router.put('/updateStatus/:chatId', validate(updateContactSchema), contactController.updateStatus);
 module.exports = router;
