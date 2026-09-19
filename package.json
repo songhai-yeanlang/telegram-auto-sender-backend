@@ -3,9 +3,8 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.1",
     "express": "^5.2.1",
-    "input": "^1.0.1",
     "joi": "^18.2.9",
     "mysql2": "^3.24.4",
-    "telegram": "^2.26.22"
+    "node-telegram-bot-api": "^0.66.0"
   }
 }

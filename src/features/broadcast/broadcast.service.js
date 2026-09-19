@@ -5,7 +5,9 @@ const logger = require('../../utils/logger.util');
 
 const startBroadcastService = async (messageText) => {
     try {
-        const client = telegramService.getClient();
+        const bot = telegramService.getBot();
+        
+        // Note: You must modify the Database Model to fetch chat_id instead of phone_number
         const pendingContacts = await ContactModel.getPendingContacts(200);
 
         if (pendingContacts.length === 0) {
@@ -16,30 +18,22 @@ const startBroadcastService = async (messageText) => {
         logger.info(`Starting to send messages to ${pendingContacts.length} numbers...`);
 
         for (let i = 0; i < pendingContacts.length; i++) {
-            const number = pendingContacts[i].phone_number;
+            const chatId = pendingContacts[i].chat_id; // Use chat_id
             
             try {
-                await client.sendMessage(number, { message: messageText });
-                logger.info(`[${i + 1}/${pendingContacts.length}] Sent successfully to ${number} ✅`);
-                await ContactModel.updateStatus(number, 'sent');
-
-                if (i < pendingContacts.length - 1) {
-                    await randomDelay(30, 60);
-                }
-            } catch (error) {
-                logger.error(`[${i + 1}/${pendingContacts.length}] Failed to ${number}: ${error.message} ❌`);
-                await ContactModel.updateStatus(number, 'failed', error.message);
+                await bot.sendMessage(chatId, messageText);
+                logger.info(`[${i + 1}/${pendingContacts.length}] Sent ${chatId} ✅`);
                 
-                if (error.errorMessage && error.errorMessage.includes("FLOOD")) {
-                    await randomDelay(180, 200); 
-                } else {
-                    await randomDelay(10, 20);
-                }
+                await ContactModel.updateStatus(chatId, 'sent');
+                await randomDelay(1, 3); // Bot can send faster now (Delay 1 to 3 seconds)
+            } catch (error) {
+                logger.error(`[${i + 1}/${pendingContacts.length}] Failed ${chatId}: ${error.message} ❌`);
+                await ContactModel.updateStatus(chatId, 'failed', error.message);
             }
         }
         logger.info("Completed!");
     } catch (error) {
-        logger.error("Error!");
+        logger.error("Error Broadcast:", error);
     }
 };
 

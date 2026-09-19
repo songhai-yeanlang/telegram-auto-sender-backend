@@ -5,12 +5,8 @@ module.exports = {
     db: {
         host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || '12345678',
-        name: process.env.DB_NAME || 'telegram_auto_sender_db'
+        password: process.env.DB_PASSWORD || '',
+        name: process.env.DB_NAME || 'telegram_db'
     },
-    telegram: {
-        apiId: parseInt(process.env.API_ID, 10),
-        apiHash: process.env.API_HASH,
-        sessionString: process.env.SESSION_STRING || ''
-    }
+    botToken: process.env.BOT_TOKEN
 };

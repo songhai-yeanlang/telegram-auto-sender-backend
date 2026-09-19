@@ -1,42 +1,44 @@
-const { TelegramClient } = require("telegram");
-const { StringSession } = require("telegram/sessions");
-const input = require("input");
+const TelegramBot = require('node-telegram-bot-api');
 const env = require('../../config/env.config');
 const logger = require('../../utils/logger.util');
-const { validateTelegramConfig } = require('./telegram.validation');
+const ContactModel = require('../contacts/contact.model'); // Import Model to use
 
-let globalClient = null;
+let bot = null;
 
-const initClient = async () => {
-    validateTelegramConfig();
-    
-    const stringSession = new StringSession(env.telegram.sessionString);
-    const client = new TelegramClient(stringSession, env.telegram.apiId, env.telegram.apiHash, {
-        connectionRetries: 5,
+const initBot = () => {
+    if (!env.botToken) throw new Error("Missing BOT_TOKEN in .env");
+
+    bot = new TelegramBot(env.botToken, { polling: true });
+    logger.info("Telegram Bot connected successfully and waiting for messages...");
+
+    // Listen for /start command from users
+    bot.onText(/\/start/, async (msg) => {
+        const chatId = msg.chat.id.toString(); // Convert to String to prevent errors
+        const firstName = msg.chat.first_name || "User";
+        
+        logger.info(`Someone clicked Start! Name: ${firstName}, Chat ID is: ${chatId}`);
+        
+        try {
+            // Automatically insert Chat ID into Database
+            const result = await ContactModel.addContact(chatId);
+            
+            if (result.affectedRows > 0) {
+                bot.sendMessage(chatId, `Hello ${firstName}! Your account has been saved successfully. You will receive a message when the broadcast starts.`);
+            } else {
+                bot.sendMessage(chatId, `Hello ${firstName}! Your account is already registered in the system.`);
+            }
+        } catch (error) {
+            logger.error("Error saving Chat ID:", error);
+            bot.sendMessage(chatId, "Sorry, we are experiencing technical difficulties.");
+        }
     });
 
-    await client.start({
-        phoneNumber: async () => await input.text("Phone Number: "),
-        password: async () => await input.text("2FA Password: "),
-        phoneCode: async () => await input.text("Telegram Verification Code: "),
-        onError: (err) => logger.error("Telegram Login Error:", err),
-    });
-
-    logger.info("Telegram Login Success!");
-    
- 
-    if (!env.telegram.sessionString) {
-        logger.info("Here is your Session String (Copy to .env):");
-        console.log(client.session.save());
-    }
-
-    globalClient = client;
-    return client;
+    return bot;
 };
 
-const getClient = () => {
-    if (!globalClient) throw new Error("Telegram Client not connected!");
-    return globalClient;
+const getBot = () => {
+    if (!bot) throw new Error("Bot is not connected yet!");
+    return bot;
 };
 
-module.exports = { initClient, getClient };
+module.exports = { initBot, getBot };
