@@ -25,6 +25,13 @@ const ContactModel = {
             "UPDATE telegram_contacts SET status = ?, error_message = ? WHERE chat_id = ?",
             [status, errorMessage, chatId]
         );
+    },
+
+    getAllContacts: async () => {
+        const [rows] = await db.connection.execute(
+            "SELECT * FROM telegram_contacts ORDER BY created_at DESC"
+        );
+        return rows;
     }
 };
 
