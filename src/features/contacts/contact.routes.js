@@ -9,5 +9,5 @@ router.post('/', validate(createContactSchema), contactController.createContact)
 router.post('/upload', upload.single('file'), contactController.uploadContactsFile);
 router.get('/getAll', contactController.getAllContacts);
 router.put('/updateStatus/:chatId', validate(updateContactSchema), contactController.updateStatus);
-
+router.post('/add-contact', validate(createContactSchema), contactController.createContact);
 module.exports = router;
