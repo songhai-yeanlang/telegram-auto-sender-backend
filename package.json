@@ -8,6 +8,7 @@
     "joi": "^18.2.9",
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.24.4",
+    "nodemailer": "^10.0.10",
     "telegram": "^2.26.22"
   }
 }

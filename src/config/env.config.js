@@ -9,5 +9,9 @@ module.exports = {
         name: process.env.DB_NAME || 'telegram_db'
     },
     botToken: process.env.BOT_TOKEN,
-    jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret_key'
+    jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret_key',
+    mail: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS
+    }
 };
