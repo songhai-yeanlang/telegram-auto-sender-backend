@@ -9,10 +9,19 @@ const ContactModel = {
         return result;
     },
 
-    getPendingContacts: async (limit = 200) => {
+    bulkAddContacts: async (contactsData) => {
+        if (!contactsData || contactsData.length === 0) return { affectedRows: 0 };
+        // contactsData should be an array of arrays: [[chatId, name, username, status], ...]
+        const [result] = await db.connection.query(
+            "INSERT IGNORE INTO telegram_contacts (chat_id, name, username, status) VALUES ?",
+            [contactsData]
+        );
+        return result;
+    },
 
+    getPendingContacts: async (limit = 200) => {
         const [rows] = await db.connection.execute(
-            "SELECT chat_id FROM telegram_contacts WHERE status = 'pending' LIMIT ?",
+            "SELECT chat_id, name, username FROM telegram_contacts WHERE status = 'pending' LIMIT ?",
             [limit]
         );
         return rows;

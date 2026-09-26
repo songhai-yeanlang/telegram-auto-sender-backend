@@ -11,7 +11,7 @@ const {
     changePasswordSchema
 } = require('./auth.validation');
 
-// ─── Login ───────────────────────────────────────────────────
+// ─── Login (Username or Email) ───────────────────────────────
 const loginUser = async (body) => {
     const { error, value } = loginSchema.validate(body);
     if (error) {
@@ -20,36 +20,44 @@ const loginUser = async (body) => {
         throw err;
     }
 
-    const { email, password } = value;
-    const user = await authModel.getUserByEmail(email);
-    if (!user) {
-        const err = new Error('Invalid email or password');
+    const identifier = value.identifier || value.username || value.email;
+    const { password } = value;
+
+    const admin = await authModel.getAdminByUsernameOrEmail(identifier);
+    if (!admin) {
+        const err = new Error('Invalid username/email or password');
         err.statusCode = 401;
         throw err;
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, admin.password_hash);
     if (!isMatch) {
-        const err = new Error('Invalid email or password');
+        const err = new Error('Invalid username/email or password');
         err.statusCode = 401;
         throw err;
     }
 
-    // Generate tokens
-    const token = jwt.sign({ id: user.id }, env.jwtSecret, { expiresIn: '1d' });
-    const refreshToken = jwt.sign({ id: user.id }, env.jwtSecret, { expiresIn: '7d' });
-    const refreshTokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Update last_login timestamp in admin_account
+    await authModel.updateLastLogin(admin.id);
 
-    await authModel.saveTokens(user.id, token, refreshToken, refreshTokenExpires);
+    // Generate JWT token
+    const token = jwt.sign(
+        { id: admin.id, username: admin.username, email: admin.email },
+        env.jwtSecret,
+        { expiresIn: '1d' }
+    );
 
     return {
         token,
-        refreshToken,
-        user: { id: user.id, email: user.email }
+        admin: {
+            id: admin.id,
+            username: admin.username,
+            email: admin.email
+        }
     };
 };
 
-// ─── Forgot Password (Send OTP) ──────────────────────────────
+// ─── Forgot Password (Send OTP via Nodemailer) ───────────────
 const forgotPassword = async (body) => {
     const { error, value } = forgotPasswordSchema.validate(body);
     if (error) {
@@ -58,21 +66,24 @@ const forgotPassword = async (body) => {
         throw err;
     }
 
-    const { email } = value;
-    const user = await authModel.getUserByEmail(email);
-    if (!user) {
-        // Don't reveal whether email exists for security
-        return { message: 'If this email is registered, you will receive an OTP shortly' };
+    const identifier = value.email || value.username;
+    const admin = await authModel.getAdminByUsernameOrEmail(identifier);
+    if (!admin) {
+        // Return generic message for security
+        return { message: 'If this account is registered, you will receive an OTP code shortly' };
     }
 
-    // Generate 6-digit OTP
+    // Generate 6-digit numeric OTP and 15-minute expiration
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    await authModel.savePasswordResetOtp(email, otp, expiresAt);
-    await sendOtpEmail(email, otp);
+    // Store OTP in admin_account (reset_token, token_expires_at)
+    await authModel.saveResetToken(admin.id, otp, expiresAt);
 
-    return { message: 'If this email is registered, you will receive an OTP shortly' };
+    // Send OTP email using Nodemailer
+    await sendOtpEmail(admin.email, otp);
+
+    return { message: 'If this account is registered, you will receive an OTP code shortly' };
 };
 
 // ─── Verify OTP ───────────────────────────────────────────────
@@ -85,35 +96,29 @@ const verifyOtp = async (body) => {
     }
 
     const { email, otp } = value;
-    const user = await authModel.getUserByEmail(email);
-    if (!user) {
-        const err = new Error('User not found');
-        err.statusCode = 404;
-        throw err;
-    }
-
-    const resetRecord = await authModel.getLatestPasswordResetOtp(email);
-    if (!resetRecord || resetRecord.otp !== otp) {
-        const err = new Error('Invalid OTP');
+    const admin = await authModel.getAdminByEmail(email);
+    if (!admin || admin.reset_token !== otp) {
+        const err = new Error('Invalid OTP code');
         err.statusCode = 400;
         throw err;
     }
 
-    if (new Date() > new Date(resetRecord.expires_at)) {
-        const err = new Error('OTP has expired. Please request a new one');
+    if (new Date() > new Date(admin.token_expires_at)) {
+        const err = new Error('OTP code has expired. Please request a new one');
         err.statusCode = 400;
         throw err;
     }
-
-    // Clear OTP so it can't be reused
-    await authModel.clearPasswordResetOtp(email);
 
     // Generate short-lived reset token (15 minutes)
     const resetToken = jwt.sign(
-        { id: user.id, action: 'reset_password' },
+        { id: admin.id, action: 'reset_password' },
         env.jwtSecret,
         { expiresIn: '15m' }
     );
+
+    // Update reset_token in admin_account with the verified resetToken
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await authModel.saveResetToken(admin.id, resetToken, expiresAt);
 
     return { message: 'OTP verified successfully', resetToken };
 };
@@ -127,7 +132,8 @@ const resetPassword = async (body) => {
         throw err;
     }
 
-    const { token, newPassword } = value;
+    const token = value.token || value.resetToken;
+    const { newPassword } = value;
 
     let decoded;
     try {
@@ -139,15 +145,23 @@ const resetPassword = async (body) => {
         throw err;
     }
 
+    const admin = await authModel.getAdminById(decoded.id);
+    if (!admin || admin.reset_token !== token) {
+        const err = new Error('Invalid or expired reset token');
+        err.statusCode = 400;
+        throw err;
+    }
+
     const salt = await bcrypt.genSalt(10);
     const newPasswordHash = await bcrypt.hash(newPassword, salt);
-    await authModel.updatePasswordById(decoded.id, newPasswordHash);
+
+    await authModel.updatePasswordById(admin.id, newPasswordHash);
 
     return { message: 'Password has been reset successfully' };
 };
 
 // ─── Change Password (Logged in) ─────────────────────────────
-const changePassword = async (userId, body) => {
+const changePassword = async (adminId, body) => {
     const { error, value } = changePasswordSchema.validate(body);
     if (error) {
         const err = new Error(error.details[0].message);
@@ -156,14 +170,14 @@ const changePassword = async (userId, body) => {
     }
 
     const { oldPassword, newPassword } = value;
-    const user = await authModel.getUserById(userId);
-    if (!user) {
-        const err = new Error('User not found');
+    const admin = await authModel.getAdminById(adminId);
+    if (!admin) {
+        const err = new Error('Admin account not found');
         err.statusCode = 404;
         throw err;
     }
 
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    const isMatch = await bcrypt.compare(oldPassword, admin.password_hash);
     if (!isMatch) {
         const err = new Error('Incorrect old password');
         err.statusCode = 400;
@@ -172,14 +186,13 @@ const changePassword = async (userId, body) => {
 
     const salt = await bcrypt.genSalt(10);
     const newPasswordHash = await bcrypt.hash(newPassword, salt);
-    await authModel.updatePasswordById(userId, newPasswordHash);
+    await authModel.updatePasswordById(adminId, newPasswordHash);
 
     return { message: 'Password has been changed successfully' };
 };
 
 // ─── Logout ───────────────────────────────────────────────────
-const logoutUser = async (userId) => {
-    await authModel.clearTokens(userId);
+const logoutUser = async () => {
     return { message: 'Logged out successfully' };
 };
 

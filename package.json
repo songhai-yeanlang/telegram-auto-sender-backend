@@ -7,8 +7,10 @@
     "input": "^1.0.1",
     "joi": "^18.2.9",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
     "mysql2": "^3.24.4",
     "nodemailer": "^10.0.10",
-    "telegram": "^2.26.22"
+    "telegram": "^2.26.22",
+    "xlsx": "^0.18.5"
   }
 }

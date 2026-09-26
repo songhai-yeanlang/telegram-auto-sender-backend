@@ -15,9 +15,11 @@ CREATE TABLE telegram_contacts (
 CREATE TABLE admin_account (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,      
     password_hash VARCHAR(255) NOT NULL,
-    reset_token VARCHAR(255) NULL UNIQUE,     
-    token_expires_at TIMESTAMP NULL,
+    reset_token VARCHAR(255) NULL UNIQUE,    
+    token_expires_at TIMESTAMP NULL,         
     last_login TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

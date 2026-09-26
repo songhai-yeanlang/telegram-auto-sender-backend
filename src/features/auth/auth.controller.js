@@ -14,7 +14,7 @@ const login = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
     try {
         const result = await authService.forgotPassword(req.body);
-        res.status(200).json({ success: true, message: result.message });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         logger.error(`[Forgot Password] Error: ${error.message}`);
         next(error);
@@ -53,7 +53,7 @@ const changePassword = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
     try {
-        const result = await authService.logoutUser(req.user.id);
+        const result = await authService.logoutUser();
         res.status(200).json({ success: true, message: result.message });
     } catch (error) {
         logger.error(`[Logout] Error: ${error.message}`);
