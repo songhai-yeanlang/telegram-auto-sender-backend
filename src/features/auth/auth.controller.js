@@ -33,7 +33,14 @@ const verifyOtp = async (req, res, next) => {
 
 const resetPassword = async (req, res, next) => {
     try {
-        const result = await authService.resetPassword(req.body);
+        const token = req.resetToken || 
+            (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') 
+                ? req.headers.authorization.split(' ')[1] 
+                : req.headers.authorization) ||
+            req.body.token || 
+            req.body.resetToken;
+
+        const result = await authService.resetPassword({ ...req.body, token });
         res.status(200).json({ success: true, message: result.message });
     } catch (error) {
         logger.error(`[Reset Password] Error: ${error.message}`);

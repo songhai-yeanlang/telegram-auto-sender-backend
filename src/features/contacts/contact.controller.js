@@ -34,7 +34,8 @@ const getAllContacts = async (req, res, next) => {
 
 const updateStatus = async (req, res, next) => {
     try {
-        const result = await contactService.updateContactStatusService(req.body.chatId, req.body.status);
+        const chatId = req.params.chatId || req.body.chatId;
+        const result = await contactService.updateContactStatusService(chatId, req.body.status);
         return res.status(result.status).json({ success: result.success, message: result.message });
     } catch (error) {
         next(error);

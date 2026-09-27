@@ -20,6 +20,31 @@ const isLogin = (req, res, next) => {
     }
 };
 
+const verifyResetToken = (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: Reset token is required in Authorization header (Bearer <token>)'
+            });
+        }
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: 'Unauthorized: Reset token is empty'
+            });
+        }
+        req.resetToken = token;
+        next();
+    } catch (error) {
+        logger.error(`[verifyResetToken Middleware] Error: ${error.message}`);
+        return res.status(401).json({ success: false, message: 'Unauthorized: Invalid or expired reset token' });
+    }
+};
+
 module.exports = {
-    isLogin
+    isLogin,
+    verifyResetToken
 };

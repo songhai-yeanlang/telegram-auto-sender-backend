@@ -33,15 +33,18 @@ const verifyOtpSchema = Joi.object({
 });
 
 const resetPasswordSchema = Joi.object({
-    token: Joi.string(),
-    resetToken: Joi.string(),
     newPassword: Joi.string().min(6).required().messages({
         'string.min': 'New password must be at least 6 characters',
         'string.empty': 'New password cannot be empty',
         'any.required': 'New password is required'
-    })
-}).or('token', 'resetToken').messages({
-    'object.missing': 'Reset token is required'
+    }),
+    confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required().messages({
+        'any.only': 'Confirm password must match new password',
+        'string.empty': 'Confirm password cannot be empty',
+        'any.required': 'Confirm password is required'
+    }),
+    token: Joi.string().optional(),
+    resetToken: Joi.string().optional()
 });
 
 const changePasswordSchema = Joi.object({

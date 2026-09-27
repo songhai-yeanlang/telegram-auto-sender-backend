@@ -16,6 +16,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+
 // Register Endpoints
 app.use('/api/contacts', contactRoutes);
 app.use('/api/broadcast', broadcastRoutes);

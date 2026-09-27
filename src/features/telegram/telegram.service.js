@@ -26,7 +26,6 @@ const initClient = async () => {
     // Save this string to your .env file so you don't have to login again
     console.log("Save this SESSION_STRING in your .env:");
     console.log(client.session.save());
-
     return client;
 };
 

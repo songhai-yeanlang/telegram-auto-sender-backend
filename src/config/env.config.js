@@ -10,7 +10,7 @@ module.exports = {
     },
     jwtSecret: process.env.JWT_SECRET,
     mail: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS
+        user: (process.env.MAIL_USER || '').trim(),
+        pass: (process.env.MAIL_PASS || '').trim().replace(/\s+/g, '')
     }
 };

@@ -123,7 +123,7 @@ const verifyOtp = async (body) => {
     return { message: 'OTP verified successfully', resetToken };
 };
 
-// ─── Reset Password ───────────────────────────────────────────
+
 const resetPassword = async (body) => {
     const { error, value } = resetPasswordSchema.validate(body);
     if (error) {
@@ -133,6 +133,12 @@ const resetPassword = async (body) => {
     }
 
     const token = value.token || value.resetToken;
+    if (!token) {
+        const err = new Error('Reset token is required in Authorization header (Bearer <token>)');
+        err.statusCode = 401;
+        throw err;
+    }
+
     const { newPassword } = value;
 
     let decoded;

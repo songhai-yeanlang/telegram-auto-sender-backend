@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 const sendOtpEmail = async (to, otp) => {
     try {
         const mailOptions = {
-            from: env.mail.user,
+            from: `"Telegram Auto Sender" <${env.mail.user}>`,
             to,
             subject: 'Password Reset OTP Code',
             text: `Your OTP for password reset is: ${otp}\nThis code will expire in 15 minutes.\nIf you did not request this, please ignore this email.`,
@@ -31,11 +31,14 @@ const sendOtpEmail = async (to, otp) => {
             `
         };
 
-        await transporter.sendMail(mailOptions);
-        logger.info(`[Mail] OTP sent successfully to ${to}`);
+        const info = await transporter.sendMail(mailOptions);
+        logger.info(`[Mail] OTP sent successfully to ${to} (Message ID: ${info.messageId})`);
+        return info;
     } catch (error) {
         logger.error(`[Mail] Failed to send OTP to ${to}: ${error.message}`);
-        throw new Error('Failed to send email. Check your SMTP configuration in .env.');
+        const err = new Error(`Failed to send email (${error.message}). Check your Gmail App Password in .env.`);
+        err.statusCode = 500;
+        throw err;
     }
 };
 
