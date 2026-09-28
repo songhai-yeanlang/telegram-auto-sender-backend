@@ -4,8 +4,7 @@ USE telegram_db;
 CREATE TABLE telegram_contacts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     chat_id VARCHAR(50) NOT NULL UNIQUE,
-    name VARCHAR(255) NULL,
-    username VARCHAR(255) NULL,
+    name VARCHAR(255) DEFAULT 'none',
     status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
     error_message TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

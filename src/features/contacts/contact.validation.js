@@ -5,8 +5,7 @@ const createContactSchema = Joi.object({
         'string.empty': 'Chat ID cannot be empty',
         'any.required': 'Chat ID is required'
     }),
-    name: Joi.string().allow(null, ''),
-    username: Joi.string().allow(null, '')
+    name: Joi.string().allow(null, '').default('none')
 });
 
 const updateContactSchema = Joi.object({
@@ -21,4 +20,25 @@ const updateContactSchema = Joi.object({
     })
 });
 
-module.exports = { createContactSchema, updateContactSchema };
+const updateContactByIdSchema = Joi.object({
+    id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID must be a number',
+        'any.required': 'ID is required'
+    }),
+    chatId: Joi.string().messages({
+        'string.empty': 'Chat ID cannot be empty'
+    }),
+    chat_id: Joi.string().messages({
+        'string.empty': 'Chat ID cannot be empty'
+    }),
+    name: Joi.string().allow(null, ''),
+    status: Joi.string().valid('pending', 'sent', 'failed').messages({
+        'any.only': 'Status must be pending, sent, or failed'
+    }),
+    errorMessage: Joi.string().allow(null, ''),
+    error_message: Joi.string().allow(null, '')
+}).min(2).messages({
+    'object.min': 'At least one field (chatId, name, status, errorMessage) must be provided to update'
+});
+
+module.exports = { createContactSchema, updateContactSchema, updateContactByIdSchema };

@@ -1,6 +1,7 @@
 const { TelegramClient } = require("telegram");
 const { StringSession } = require("telegram/sessions");
-const input = require("input"); // npm i input
+const input = require("input");
+const logger = require("../../utils/logger.util");
 
 const apiId = parseInt(process.env.API_ID);
 const apiHash = process.env.API_HASH;
@@ -18,14 +19,13 @@ const initClient = async () => {
         phoneNumber: async () => await input.text("Please enter your phone number: "),
         password: async () => await input.text("Please enter your 2FA password: "),
         phoneCode: async () => await input.text("Please enter the code you received: "),
-        onError: (err) => console.log(err),
+        onError: (err) => logger.error(`[Telegram] Connection error: ${err.message}`),
     });
 
-    console.log("You are now connected as a Personal Account!");
-    
+    logger.info("[Telegram] You are now connected as a Personal Account!");
+
     // Save this string to your .env file so you don't have to login again
-    console.log("Save this SESSION_STRING in your .env:");
-    console.log(client.session.save());
+    logger.info(`[Telegram] Save this SESSION_STRING in your .env: ${client.session.save()}`);
     return client;
 };
 

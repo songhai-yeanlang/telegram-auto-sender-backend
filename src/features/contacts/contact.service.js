@@ -1,5 +1,6 @@
 const ContactModel = require('./contact.model');
 const xlsx = require('xlsx');
+const logger = require('../../utils/logger.util');
 
 // Helper function to format phone numbers
 const formatPhoneNumber = (phone) => {
@@ -23,9 +24,9 @@ const formatPhoneNumber = (phone) => {
     return cleaned;
 };
 
-const addContactService = async (chatId, name = null, username = null) => {
+const addContactService = async (chatId, name = 'none') => {
     const formattedChatId = formatPhoneNumber(chatId);
-    const result = await ContactModel.addContact(formattedChatId, name, username);
+    const result = await ContactModel.addContact(formattedChatId, name || 'none');
     if (result.affectedRows === 0) {
         return { status: 409, success: false, message: "Chat ID is already in the system!" };
     }
@@ -51,10 +52,9 @@ const uploadContactsFileService = async (fileBuffer, originalname) => {
                 if (!chatId) continue;
                 
                 chatId = formatPhoneNumber(chatId);
-                const name = row[1] ? row[1].toString().trim() : null;
-                const username = row[2] ? row[2].toString().trim() : null;
+                const name = (row[1] && row[1].toString().trim()) ? row[1].toString().trim() : 'none';
                 
-                contactsData.push([chatId, name, username, 'pending']);
+                contactsData.push([chatId, name, 'pending']);
             }
         } else if (fileExtension === 'csv' || fileExtension === 'txt') {
             const content = fileBuffer.toString('utf-8');
@@ -68,10 +68,9 @@ const uploadContactsFileService = async (fileBuffer, originalname) => {
                 if (!chatId) continue;
                 
                 chatId = formatPhoneNumber(chatId);
-                const name = parts[1] ? parts[1].trim() : null;
-                const username = parts[2] ? parts[2].trim() : null;
+                const name = (parts[1] && parts[1].trim()) ? parts[1].trim() : 'none';
                 
-                contactsData.push([chatId, name, username, 'pending']);
+                contactsData.push([chatId, name, 'pending']);
             }
         }
         
@@ -83,7 +82,7 @@ const uploadContactsFileService = async (fileBuffer, originalname) => {
         return { status: 201, success: true, message: `Successfully processed file. Inserted ${result.affectedRows} new contacts.` };
         
     } catch (error) {
-        console.error("Error processing file:", error);
+        logger.error(`[Contact] Error processing file: ${error.message}`);
         return { status: 500, success: false, message: "Failed to process the uploaded file." };
     }
 };
@@ -98,4 +97,45 @@ const updateContactStatusService = async (chatId, status) => {
     return { status: 200, success: true, message: "Status updated successfully!" };
 };
 
-module.exports = { addContactService, uploadContactsFileService, getAllContactsService, updateContactStatusService };
+const updateContactService = async (id, updateData) => {
+    try {
+        const contact = await ContactModel.getContactById(id);
+        if (!contact) {
+            return { status: 404, success: false, message: "Contact not found." };
+        }
+
+        const fieldsToUpdate = {};
+        const chatIdVal = updateData.chatId !== undefined ? updateData.chatId : updateData.chat_id;
+        if (chatIdVal !== undefined) {
+            fieldsToUpdate.chat_id = formatPhoneNumber(chatIdVal);
+        }
+        if (updateData.name !== undefined) {
+            fieldsToUpdate.name = (updateData.name && updateData.name.trim()) ? updateData.name.trim() : 'none';
+        }
+        if (updateData.status !== undefined) {
+            fieldsToUpdate.status = updateData.status;
+        }
+        const errorMsgVal = updateData.errorMessage !== undefined ? updateData.errorMessage : updateData.error_message;
+        if (errorMsgVal !== undefined) {
+            fieldsToUpdate.error_message = errorMsgVal;
+        }
+
+        await ContactModel.updateContactById(id, fieldsToUpdate);
+        const updatedContact = await ContactModel.getContactById(id);
+        return { status: 200, success: true, message: "Contact updated successfully!", data: updatedContact };
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return { status: 409, success: false, message: "Chat ID already exists for another contact!" };
+        }
+        logger.error(`[Contact] Error updating contact: ${error.message}`);
+        return { status: 500, success: false, message: "Failed to update contact." };
+    }
+};
+
+module.exports = { 
+    addContactService, 
+    uploadContactsFileService, 
+    getAllContactsService, 
+    updateContactStatusService,
+    updateContactService 
+};

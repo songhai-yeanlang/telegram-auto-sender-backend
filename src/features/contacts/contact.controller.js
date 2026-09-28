@@ -2,8 +2,8 @@ const contactService = require('./contact.service');
 
 const createContact = async (req, res, next) => {
     try {
-        const { chatId, name, username } = req.body;
-        const result = await contactService.addContactService(chatId, name, username);
+        const { chatId, name } = req.body;
+        const result = await contactService.addContactService(chatId, name);
         return res.status(result.status).json({ success: result.success, message: result.message });
     } catch (error) {
         next(error);
@@ -42,4 +42,16 @@ const updateStatus = async (req, res, next) => {
     }
 };
 
-module.exports = { createContact, uploadContactsFile, getAllContacts, updateStatus };
+const updateContact = async (req, res, next) => {
+    try {
+        const id = req.params.id || req.body.id;
+        const result = await contactService.updateContactService(id, req.body);
+        const response = { success: result.success, message: result.message };
+        if (result.data) response.data = result.data;
+        return res.status(result.status).json(response);
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { createContact, uploadContactsFile, getAllContacts, updateStatus, updateContact };

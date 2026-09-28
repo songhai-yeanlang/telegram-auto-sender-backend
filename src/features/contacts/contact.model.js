@@ -1,19 +1,19 @@
 const db = require('../../config/db.config');
 
 const ContactModel = {
-    addContact: async (chatId, name = null, username = null) => {
+    addContact: async (chatId, name = 'none') => {
         const [result] = await db.connection.execute(
-            "INSERT IGNORE INTO telegram_contacts (chat_id, name, username, status) VALUES (?, ?, ?, 'pending')",
-            [chatId, name, username]
+            "INSERT IGNORE INTO telegram_contacts (chat_id, name, status) VALUES (?, ?, 'pending')",
+            [chatId, name || 'none']
         );
         return result;
     },
 
     bulkAddContacts: async (contactsData) => {
         if (!contactsData || contactsData.length === 0) return { affectedRows: 0 };
-        // contactsData should be an array of arrays: [[chatId, name, username, status], ...]
+        // contactsData should be an array of arrays: [[chatId, name, status], ...]
         const [result] = await db.connection.query(
-            "INSERT IGNORE INTO telegram_contacts (chat_id, name, username, status) VALUES ?",
+            "INSERT IGNORE INTO telegram_contacts (chat_id, name, status) VALUES ?",
             [contactsData]
         );
         return result;
@@ -21,7 +21,7 @@ const ContactModel = {
 
     getPendingContacts: async (limit = 200) => {
         const [rows] = await db.connection.execute(
-            "SELECT chat_id, name, username FROM telegram_contacts WHERE status = 'pending' LIMIT ?",
+            "SELECT chat_id, name FROM telegram_contacts WHERE status = 'pending' LIMIT ?",
             [limit]
         );
         return rows;
@@ -40,6 +40,45 @@ const ContactModel = {
             "SELECT * FROM telegram_contacts ORDER BY created_at DESC"
         );
         return rows;
+    },
+
+    getContactById: async (id) => {
+        const [rows] = await db.connection.execute(
+            "SELECT * FROM telegram_contacts WHERE id = ?",
+            [id]
+        );
+        return rows[0] || null;
+    },
+
+    updateContactById: async (id, updateFields) => {
+        const fields = [];
+        const values = [];
+
+        if (updateFields.chat_id !== undefined) {
+            fields.push('chat_id = ?');
+            values.push(updateFields.chat_id);
+        }
+        if (updateFields.name !== undefined) {
+            fields.push('name = ?');
+            values.push(updateFields.name);
+        }
+        if (updateFields.status !== undefined) {
+            fields.push('status = ?');
+            values.push(updateFields.status);
+        }
+        if (updateFields.error_message !== undefined) {
+            fields.push('error_message = ?');
+            values.push(updateFields.error_message);
+        }
+
+        if (fields.length === 0) return { affectedRows: 0 };
+
+        values.push(id);
+        const [result] = await db.connection.execute(
+            `UPDATE telegram_contacts SET ${fields.join(', ')} WHERE id = ?`,
+            values
+        );
+        return result;
     }
 };
 

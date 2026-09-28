@@ -31,7 +31,7 @@ const startBroadcastService = async (messageText) => {
                                 new Api.InputPhoneContact({
                                     clientId: BigInt(Math.floor(Math.random() * 10000000)),
                                     phone: chatId,
-                                    firstName: contact.name || chatId,
+                                    firstName: (contact.name && contact.name !== 'none') ? contact.name : chatId,
                                     lastName: '',
                                 }),
                             ],
