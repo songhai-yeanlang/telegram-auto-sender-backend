@@ -41,4 +41,11 @@ const updateContactByIdSchema = Joi.object({
     'object.min': 'At least one field (chatId, name, status, errorMessage) must be provided to update'
 });
 
-module.exports = { createContactSchema, updateContactSchema, updateContactByIdSchema };
+const deleteContactSchema = Joi.object({
+    id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID must be a number',
+        'any.required': 'ID is required'
+    })
+});
+
+module.exports = { createContactSchema, updateContactSchema, updateContactByIdSchema, deleteContactSchema };

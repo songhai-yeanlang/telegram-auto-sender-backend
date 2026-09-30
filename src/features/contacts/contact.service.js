@@ -132,10 +132,26 @@ const updateContactService = async (id, updateData) => {
     }
 };
 
+const deleteContactService = async (id) => {
+    try {
+        const contact = await ContactModel.getContactById(id);
+        if (!contact) {
+            return { status: 404, success: false, message: "Contact not found." };
+        }
+
+        await ContactModel.deleteContactById(id);
+        return { status: 200, success: true, message: "Contact deleted successfully!" };
+    } catch (error) {
+        logger.error(`[Contact] Error deleting contact: ${error.message}`);
+        return { status: 500, success: false, message: "Failed to delete contact." };
+    }
+};
+
 module.exports = { 
     addContactService, 
     uploadContactsFileService, 
     getAllContactsService, 
     updateContactStatusService,
-    updateContactService 
+    updateContactService,
+    deleteContactService 
 };

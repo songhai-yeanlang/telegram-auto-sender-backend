@@ -25,14 +25,14 @@ const loginUser = async (body) => {
 
     const admin = await authModel.getAdminByUsernameOrEmail(identifier);
     if (!admin) {
-        const err = new Error('Invalid username/email or password');
+        const err = new Error('Invalid email or password');
         err.statusCode = 401;
         throw err;
     }
 
     const isMatch = await bcrypt.compare(password, admin.password_hash);
     if (!isMatch) {
-        const err = new Error('Invalid username/email or password');
+        const err = new Error('Invalid email or password');
         err.statusCode = 401;
         throw err;
     }

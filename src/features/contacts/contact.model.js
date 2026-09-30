@@ -27,6 +27,26 @@ const ContactModel = {
         return rows;
     },
 
+    getContactsByIds: async (ids) => {
+        if (!ids || ids.length === 0) return [];
+        const placeholders = ids.map(() => '?').join(',');
+        const [rows] = await db.connection.query(
+            `SELECT id, chat_id, name, status FROM telegram_contacts WHERE id IN (${placeholders})`,
+            ids
+        );
+        return rows;
+    },
+
+    getContactsByChatIds: async (chatIds) => {
+        if (!chatIds || chatIds.length === 0) return [];
+        const placeholders = chatIds.map(() => '?').join(',');
+        const [rows] = await db.connection.query(
+            `SELECT id, chat_id, name, status FROM telegram_contacts WHERE chat_id IN (${placeholders})`,
+            chatIds
+        );
+        return rows;
+    },
+
     updateStatus: async (chatId, status, errorMessage = null) => {
         // Update status to sent or failed based on actual result
         await db.connection.execute(
@@ -77,6 +97,14 @@ const ContactModel = {
         const [result] = await db.connection.execute(
             `UPDATE telegram_contacts SET ${fields.join(', ')} WHERE id = ?`,
             values
+        );
+        return result;
+    },
+
+    deleteContactById: async (id) => {
+        const [result] = await db.connection.execute(
+            "DELETE FROM telegram_contacts WHERE id = ?",
+            [id]
         );
         return result;
     }

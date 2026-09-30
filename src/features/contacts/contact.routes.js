@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const contactController = require('./contact.controller');
 const validate = require('../../middlewares/validate');
-const { createContactSchema, updateContactSchema, updateContactByIdSchema } = require('./contact.validation');
+const { createContactSchema, updateContactSchema, updateContactByIdSchema, deleteContactSchema } = require('./contact.validation');
 const upload = require('../../middlewares/upload.middleware');
 const { isLogin } = require('../auth/auth.middleware');
 
@@ -11,6 +11,7 @@ router.post('/add', isLogin, validate(createContactSchema), contactController.cr
 router.put('/updateStatus/:chatId', isLogin, validate(updateContactSchema), contactController.updateStatus);
 router.post('/upload', isLogin, upload.single('file'), contactController.uploadContactsFile);
 router.put('/update/:id', isLogin, validate(updateContactByIdSchema), contactController.updateContact);
+router.delete('/delete/:id', isLogin, validate(deleteContactSchema), contactController.deleteContact);
 
 module.exports = router;
 
