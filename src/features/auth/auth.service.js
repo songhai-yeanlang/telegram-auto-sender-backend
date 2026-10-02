@@ -167,7 +167,23 @@ const resetPassword = async (body) => {
 
     await authModel.updatePasswordById(admin.id, newPasswordHash);
 
-    return { message: 'Password has been reset successfully' };
+    // Generate new session token so user is automatically logged in
+    const sessionToken = jwt.sign(
+        { id: admin.id, username: admin.username, email: admin.email },
+        env.jwtSecret,
+        { expiresIn: '1d' }
+    );
+
+    return {
+        message: 'Password has been reset successfully',
+        token: sessionToken,
+        admin: {
+            id: admin.id,
+            username: admin.username,
+            email: admin.email,
+            avatar: admin.avatar || null
+        }
+    };
 };
 
 // ─── Change Password (Logged in) ─────────────────────────────

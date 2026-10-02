@@ -41,7 +41,12 @@ const resetPassword = async (req, res, next) => {
             req.body.resetToken;
 
         const result = await authService.resetPassword({ ...req.body, token });
-        res.status(200).json({ success: true, message: result.message });
+        res.status(200).json({
+            success: true,
+            message: result.message,
+            token: result.token,
+            admin: result.admin
+        });
     } catch (error) {
         logger.error(`[Reset Password] Error: ${error.message}`);
         next(error);
