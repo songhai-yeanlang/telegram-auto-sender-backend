@@ -69,6 +69,35 @@ const clearResetToken = async (id) => {
     );
 };
 
+const updateProfileById = async (id, fields) => {
+    // Build SET clause dynamically from provided fields (only username allowed)
+    const allowedFields = ['username'];
+    const setClauses = [];
+    const values = [];
+
+    for (const key of allowedFields) {
+        if (fields[key] !== undefined) {
+            setClauses.push(`${key} = ?`);
+            values.push(fields[key]);
+        }
+    }
+
+    if (setClauses.length === 0) return null;
+
+    values.push(id); // WHERE id = ?
+    const sql = `UPDATE admin_account SET ${setClauses.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    const [result] = await connection.query(sql, values);
+    return result.affectedRows > 0;
+};
+
+const updateAvatarById = async (id, avatarUrl) => {
+    const [result] = await connection.query(
+        'UPDATE admin_account SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [avatarUrl, id]
+    );
+    return result.affectedRows > 0;
+};
+
 module.exports = {
     getAdminByUsernameOrEmail,
     getAdminByEmail,
@@ -76,6 +105,8 @@ module.exports = {
     getAdminById,
     updateLastLogin,
     updatePasswordById,
+    updateProfileById,
+    updateAvatarById,
     saveResetToken,
     getAdminByResetToken,
     clearResetToken

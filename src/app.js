@@ -3,6 +3,7 @@ const cors = require('cors');
 const env = require('./config/env.config');
 const { connectDB } = require('./config/db.config');
 const { initClient } = require('./features/telegram/telegram.service');
+const path = require('path');
 const logger = require('./utils/logger.util');
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -15,6 +16,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static uploaded files (e.g. avatars)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 
 

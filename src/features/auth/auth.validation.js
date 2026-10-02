@@ -59,10 +59,20 @@ const changePasswordSchema = Joi.object({
     })
 });
 
+const updateProfileSchema = Joi.object({
+    username: Joi.string().min(2).max(50).required().messages({
+        'string.min': 'Username must be at least 2 characters',
+        'string.max': 'Username must not exceed 50 characters',
+        'string.empty': 'Username cannot be empty',
+        'any.required': 'Username is required'
+    })
+});
+
 module.exports = {
     loginSchema,
     forgotPasswordSchema,
     verifyOtpSchema,
     resetPasswordSchema,
-    changePasswordSchema
+    changePasswordSchema,
+    updateProfileSchema
 };

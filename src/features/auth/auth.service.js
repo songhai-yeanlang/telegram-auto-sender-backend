@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const env = require('../../config/env.config');
@@ -8,7 +10,8 @@ const {
     forgotPasswordSchema,
     verifyOtpSchema,
     resetPasswordSchema,
-    changePasswordSchema
+    changePasswordSchema,
+    updateProfileSchema
 } = require('./auth.validation');
 
 // ─── Login (Username or Email) ───────────────────────────────
@@ -52,7 +55,8 @@ const loginUser = async (body) => {
         admin: {
             id: admin.id,
             username: admin.username,
-            email: admin.email
+            email: admin.email,
+            avatar: admin.avatar || null
         }
     };
 };
@@ -197,6 +201,95 @@ const changePassword = async (adminId, body) => {
     return { message: 'Password has been changed successfully' };
 };
 
+// ─── Update Profile (username only) ───────────────────────────
+const updateProfile = async (adminId, body) => {
+    const { error, value } = updateProfileSchema.validate(body, { abortEarly: false });
+    if (error) {
+        const err = new Error(error.details.map(d => d.message).join(', '));
+        err.statusCode = 400;
+        throw err;
+    }
+
+    const admin = await authModel.getAdminById(adminId);
+    if (!admin) {
+        const err = new Error('Admin account not found');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    // Check for username conflict (if different from current)
+    if (value.username && value.username !== admin.username) {
+        const existing = await authModel.getAdminByUsername(value.username);
+        if (existing && existing.id !== adminId) {
+            const err = new Error('Username is already taken');
+            err.statusCode = 409;
+            throw err;
+        }
+    }
+
+    await authModel.updateProfileById(adminId, { username: value.username });
+
+    // Fetch fresh admin data to return updated info
+    const updated = await authModel.getAdminById(adminId);
+
+    return {
+        message: 'Profile updated successfully',
+        admin: {
+            id: updated.id,
+            username: updated.username,
+            email: updated.email,
+            avatar: updated.avatar || null
+        }
+    };
+};
+
+// ─── Upload / Update Avatar ───────────────────────────────────
+const updateAvatar = async (adminId, file) => {
+    if (!file) {
+        const err = new Error('No image file provided');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    const admin = await authModel.getAdminById(adminId);
+    if (!admin) {
+        const err = new Error('Admin account not found');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    // If an old avatar file exists on disk, remove it to prevent orphaned files
+    if (admin.avatar && admin.avatar.startsWith('/uploads/avatars/')) {
+        const oldFilename = path.basename(admin.avatar);
+        const oldFilePath = path.join(__dirname, '../../../uploads/avatars', oldFilename);
+        if (fs.existsSync(oldFilePath)) {
+            try {
+                fs.unlinkSync(oldFilePath);
+            } catch (unlinkErr) {
+                // Non-critical if unlink fails
+            }
+        }
+    }
+
+    // Relative web URL path for the avatar
+    const avatarUrl = `/uploads/avatars/${file.filename}`;
+
+    await authModel.updateAvatarById(adminId, avatarUrl);
+
+    const updated = await authModel.getAdminById(adminId);
+
+    return {
+        message: 'Avatar uploaded successfully',
+        avatar: updated.avatar,
+        admin: {
+            id: updated.id,
+            username: updated.username,
+            email: updated.email,
+            avatar: updated.avatar
+        }
+    };
+};
+
 // ─── Logout ───────────────────────────────────────────────────
 const logoutUser = async () => {
     return { message: 'Logged out successfully' };
@@ -208,5 +301,7 @@ module.exports = {
     verifyOtp,
     resetPassword,
     changePassword,
+    updateProfile,
+    updateAvatar,
     logoutUser
 };
