@@ -4,7 +4,8 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "login": "node src/script/loginTelegram.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
