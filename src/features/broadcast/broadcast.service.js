@@ -3,8 +3,18 @@ const ContactModel = require('../contacts/contact.model');
 const { randomDelay } = require('../../utils/delay.util');
 const logger = require('../../utils/logger.util');
 const { Api } = require('telegram');
+const fs = require('fs');
 
-const startBroadcastService = async (messageText, { contactIds, chatIds } = {}) => {
+let isBroadcasting = false;
+
+const startBroadcastService = async (messageText, { contactIds, chatIds, imagePath } = {}) => {
+    if (isBroadcasting) {
+        logger.warn("[Broadcast] A broadcast job is already in progress. Please wait until it completes.");
+        return;
+    }
+
+    isBroadcasting = true;
+
     try {
         const client = telegramService.getClient();
         
@@ -19,10 +29,12 @@ const startBroadcastService = async (messageText, { contactIds, chatIds } = {}) 
 
         if (targetContacts.length === 0) {
             logger.warn("No contacts found for the selected IDs.");
+            isBroadcasting = false;
             return;
         }
 
-        logger.info(`Starting to send messages to ${targetContacts.length} selected contacts...`);
+        const hasImage = Boolean(imagePath && fs.existsSync(imagePath));
+        logger.info(`Starting broadcast to ${targetContacts.length} contacts (${hasImage ? 'with image' : 'text only'})...`);
 
         for (let i = 0; i < targetContacts.length; i++) {
             const contact = targetContacts[i];
@@ -46,9 +58,21 @@ const startBroadcastService = async (messageText, { contactIds, chatIds } = {}) 
                     );
                 }
                 
-                await client.sendMessage(chatId, { message: messageText });
+                // Send with image if provided, otherwise send text
+                if (hasImage) {
+                    await client.sendFile(chatId, {
+                        file: imagePath,
+                        caption: messageText || '',
+                        parseMode: 'html'
+                    });
+                } else {
+                    await client.sendMessage(chatId, { 
+                        message: messageText,
+                        parseMode: 'html'
+                    });
+                }
+
                 logger.info(`[${i + 1}/${targetContacts.length}] Sent ${chatId} ✅`);
-                
                 await ContactModel.updateStatus(chatId, 'sent');
                 
                 // Random delay between 10 and 25 seconds for Personal Account safety
@@ -56,12 +80,22 @@ const startBroadcastService = async (messageText, { contactIds, chatIds } = {}) 
             } catch (error) {
                 logger.error(`[${i + 1}/${targetContacts.length}] Failed ${chatId}: ${error.message} ❌`);
                 await ContactModel.updateStatus(chatId, 'failed', error.message);
+
+                // Handle Telegram FloodWait if encountered
+                if (error.seconds) {
+                    logger.warn(`[Broadcast] Telegram requested FLOOD_WAIT: sleeping for ${error.seconds}s...`);
+                    await randomDelay(error.seconds, error.seconds + 3);
+                }
             }
         }
         logger.info("Broadcast to selected contacts completed!");
     } catch (error) {
         logger.error("Error Broadcast:", error);
+    } finally {
+        isBroadcasting = false;
     }
 };
 
-module.exports = { startBroadcastService };
+const isBroadcastRunning = () => isBroadcasting;
+
+module.exports = { startBroadcastService, isBroadcastRunning };

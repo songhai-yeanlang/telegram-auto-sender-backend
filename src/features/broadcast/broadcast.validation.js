@@ -1,9 +1,8 @@
 const Joi = require('joi');
 
 const broadcastSchema = Joi.object({
-    message: Joi.string().required().messages({
-        'string.empty': 'Message cannot be empty',
-        'any.required': 'Message is required'
+    message: Joi.string().allow('', null).optional().messages({
+        'string.base': 'Message must be a string'
     }),
     contactIds: Joi.array().items(Joi.number().integer().positive()).min(1).messages({
         'array.min': 'Please select at least one contact to send'
