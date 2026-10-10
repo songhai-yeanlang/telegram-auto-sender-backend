@@ -64,4 +64,14 @@ const deleteContact = async (req, res, next) => {
     }
 };
 
-module.exports = { createContact, uploadContactsFile, getAllContacts, updateStatus, updateContact, deleteContact };
+const deleteMultipleContacts = async (req, res, next) => {
+    try {
+        const { ids } = req.body;
+        const result = await contactService.deleteMultipleContactsService(ids);
+        return res.status(result.status).json({ success: result.success, message: result.message });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { createContact, uploadContactsFile, getAllContacts, updateStatus, updateContact, deleteContact, deleteMultipleContacts };

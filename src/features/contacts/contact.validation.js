@@ -48,4 +48,12 @@ const deleteContactSchema = Joi.object({
     })
 });
 
-module.exports = { createContactSchema, updateContactSchema, updateContactByIdSchema, deleteContactSchema };
+const deleteMultipleContactsSchema = Joi.object({
+    ids: Joi.array().items(Joi.number().integer().positive()).min(1).required().messages({
+        'array.base': 'IDs must be an array',
+        'array.min': 'At least one ID must be provided',
+        'any.required': 'IDs are required'
+    })
+});
+
+module.exports = { createContactSchema, updateContactSchema, updateContactByIdSchema, deleteContactSchema, deleteMultipleContactsSchema };

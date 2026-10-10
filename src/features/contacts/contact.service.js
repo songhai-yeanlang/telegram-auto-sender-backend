@@ -147,11 +147,26 @@ const deleteContactService = async (id) => {
     }
 };
 
+const deleteMultipleContactsService = async (ids) => {
+    try {
+        if (!ids || ids.length === 0) {
+            return { status: 400, success: false, message: "No IDs provided." };
+        }
+
+        const result = await ContactModel.deleteContactsByIds(ids);
+        return { status: 200, success: true, message: `Successfully deleted ${result.affectedRows} contacts!` };
+    } catch (error) {
+        logger.error(`[Contact] Error deleting multiple contacts: ${error.message}`);
+        return { status: 500, success: false, message: "Failed to delete contacts." };
+    }
+};
+
 module.exports = { 
     addContactService, 
     uploadContactsFileService, 
     getAllContactsService, 
     updateContactStatusService,
     updateContactService,
-    deleteContactService 
+    deleteContactService,
+    deleteMultipleContactsService
 };
