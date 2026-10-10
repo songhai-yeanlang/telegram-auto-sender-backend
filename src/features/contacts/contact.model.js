@@ -24,10 +24,10 @@ const getAllContacts = async () => {
     return rows;
 };
 
-const updateStatus = async (chatId, status) => {
+const updateStatus = async (chatId, status, errorMessage = null) => {
     const [result] = await connection.query(
-        'UPDATE telegram_contacts SET status = ? WHERE chat_id = ?',
-        [status, chatId]
+        'UPDATE telegram_contacts SET status = ?, error_message = ? WHERE chat_id = ?',
+        [status, errorMessage, chatId]
     );
     return result;
 };
@@ -73,6 +73,24 @@ const deleteContactsByIds = async (ids) => {
     return result;
 };
 
+const getContactsByIds = async (ids) => {
+    if (!ids || ids.length === 0) return [];
+    const [rows] = await connection.query(
+        'SELECT * FROM telegram_contacts WHERE id IN (?)',
+        [ids]
+    );
+    return rows;
+};
+
+const getContactsByChatIds = async (chatIds) => {
+    if (!chatIds || chatIds.length === 0) return [];
+    const [rows] = await connection.query(
+        'SELECT * FROM telegram_contacts WHERE chat_id IN (?)',
+        [chatIds]
+    );
+    return rows;
+};
+
 module.exports = {
     addContact,
     bulkAddContacts,
@@ -81,5 +99,7 @@ module.exports = {
     getContactById,
     updateContactById,
     deleteContactById,
-    deleteContactsByIds
+    deleteContactsByIds,
+    getContactsByIds,
+    getContactsByChatIds
 };
