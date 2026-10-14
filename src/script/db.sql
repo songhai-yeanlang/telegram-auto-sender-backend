@@ -23,3 +23,17 @@ CREATE TABLE admin_account (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+
+-- 10/10/2026
+CREATE TABLE broadcast_scheduled (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_text TEXT NULL,
+    image_path VARCHAR(255) DEFAULT NULL,
+    target_type ENUM('all', 'selected') DEFAULT 'selected',
+    target_ids JSON DEFAULT NULL,
+    scheduled_at DATETIME NOT NULL,
+    status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

@@ -2,45 +2,88 @@ const broadcastService = require('./broadcast.service');
 
 const startBroadcast = async (req, res, next) => {
     try {
-        if (broadcastService.isBroadcastRunning && broadcastService.isBroadcastRunning()) {
-            return res.status(409).json({
-                success: false,
-                message: "A broadcast is already in progress. Please wait until it finishes."
-            });
-        }
-
         const { message, contactIds, chatIds } = req.body;
         const imagePath = req.file ? req.file.path : null;
 
-        if (!imagePath && (!message || !message.trim())) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide either a message text or an image to broadcast."
-            });
-        }
-
-        broadcastService.startBroadcastService(message || '', { 
-            contactIds, 
-            chatIds, 
-            imagePath 
+        const result = await broadcastService.startBroadcastService({
+            message,
+            contactIds,
+            chatIds,
+            imagePath
         });
 
-        return res.status(200).json({ 
-            success: true, 
-            message: imagePath 
-                ? "Broadcast process with image started for selected contacts!" 
-                : "Broadcast process started for selected contacts!" 
+        return res.status(result.status).json({
+            success: result.success,
+            message: result.message
         });
     } catch (error) {
         next(error);
     }
 };
 
-const getBroadcastStatus = (req, res) => {
-    return res.status(200).json({
-        success: true,
-        isBroadcasting: broadcastService.isBroadcastRunning ? broadcastService.isBroadcastRunning() : false
-    });
+const getBroadcastStatus = (req, res, next) => {
+    try {
+        const result = broadcastService.getBroadcastStatusService();
+        return res.status(result.status).json({
+            success: result.success,
+            isBroadcasting: result.isBroadcasting
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
-module.exports = { startBroadcast, getBroadcastStatus };
+const scheduleBroadcast = async (req, res, next) => {
+    try {
+        const { message, contactIds, chatIds, scheduledAt } = req.body;
+        const imagePath = req.file ? req.file.path : null;
+
+        const result = await broadcastService.scheduleBroadcastService({
+            message,
+            contactIds,
+            chatIds,
+            imagePath,
+            scheduledAt
+        });
+
+        return res.status(result.status).json({
+            success: result.success,
+            message: result.message
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getScheduledBroadcasts = async (req, res, next) => {
+    try {
+        const result = await broadcastService.getScheduledBroadcastsService();
+        return res.status(result.status).json({
+            success: result.success,
+            data: result.data
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const deleteScheduledBroadcast = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await broadcastService.deleteScheduledBroadcastService(id);
+        return res.status(result.status).json({
+            success: result.success,
+            message: result.message
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    startBroadcast,
+    getBroadcastStatus,
+    scheduleBroadcast,
+    getScheduledBroadcasts,
+    deleteScheduledBroadcast
+};
