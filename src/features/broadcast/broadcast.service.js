@@ -82,7 +82,7 @@ const executeBroadcastProcess = async ({ messageText, contactIds, chatIds, image
                 await randomDelay(10, 25);
             } catch (error) {
                 logger.error(`[Broadcast] [${i + 1}/${targetContacts.length}] Failed ${chatId}: ${error.message} ❌`);
-                await ContactModel.updateStatus(chatId, 'failed', 'Cannot contact this Telegram account !');
+                await ContactModel.updateStatus(chatId, 'failed', 'Cannot contact this account...');
 
                 // Handle Telegram FloodWait if encountered
                 if (error.seconds) {
