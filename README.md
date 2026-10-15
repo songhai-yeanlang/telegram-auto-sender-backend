@@ -7,12 +7,12 @@ Backend RESTful API and automated background worker for the **Telegram Auto Send
 ## 📸 System Previews
 
 ### 1. Contacts Management
-![Contacts Management](./screenshots/screencapture-contact-page.png)
+![Contacts Management](./uploads/screenshots/screencapture-contact-page.png)
 
 ---
 
 ### 2. Broadcast & Scheduled Messaging
-![Broadcast Page](./screenshots/screencapture-broadcast-page.png)
+![Broadcast Page](./uploads/screenshots/screencapture-broadcast-page.png)
 
 ---
 
