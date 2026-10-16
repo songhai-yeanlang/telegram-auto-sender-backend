@@ -44,10 +44,12 @@ const executeBroadcastProcess = async ({ messageText, contactIds, chatIds, image
             const chatId = contact.chat_id;
 
             try {
+                let targetPeer = chatId;
+
                 // If it's a phone number, import it first to resolve the Peer
                 if (chatId.startsWith('+')) {
                     logger.info(`[Broadcast] [${i + 1}/${targetContacts.length}] Importing contact ${chatId}...`);
-                    await client.invoke(
+                    const importResult = await client.invoke(
                         new Api.contacts.ImportContacts({
                             contacts: [
                                 new Api.InputPhoneContact({
@@ -59,35 +61,64 @@ const executeBroadcastProcess = async ({ messageText, contactIds, chatIds, image
                             ],
                         })
                     );
+
+                    // Check if this phone number is registered on Telegram
+                    if (!importResult.users || importResult.users.length === 0) {
+                        throw new Error('This phone number does not have a Telegram account or privacy settings prevent contact');
+                    }
+
+                    // Use the resolved Telegram user ID / entity directly to ensure message delivery
+                    const importedUser = importResult.users[0];
+                    targetPeer = importedUser.id || importedUser;
                 }
 
                 // Send with image if provided, otherwise send text
                 if (hasImage) {
-                    await client.sendFile(chatId, {
+                    await client.sendFile(targetPeer, {
                         file: imagePath,
                         caption: messageText || '',
                         parseMode: 'html'
                     });
                 } else {
-                    await client.sendMessage(chatId, {
+                    await client.sendMessage(targetPeer, {
                         message: messageText || '',
                         parseMode: 'html'
                     });
                 }
 
                 logger.info(`[Broadcast] [${i + 1}/${targetContacts.length}] Sent ${chatId} ✅`);
-                await ContactModel.updateStatus(chatId, 'sent');
+                await ContactModel.updateStatus(chatId, 'sent', null);
+
+                // Optional: remove temporary imported contact to keep personal account contact book clean
+                if (chatId.startsWith('+')) {
+                    try {
+                        await client.invoke(new Api.contacts.DeleteContacts({ id: [targetPeer] }));
+                    } catch (cleanErr) {
+                        // Non-critical cleanup
+                    }
+                }
 
                 // Random delay between 10 and 25 seconds for Personal Account safety
                 await randomDelay(10, 25);
             } catch (error) {
-                logger.error(`[Broadcast] [${i + 1}/${targetContacts.length}] Failed ${chatId}: ${error.message} ❌`);
-                await ContactModel.updateStatus(chatId, 'failed', 'Cannot contact this account...');
+                const errMsg = error.message || 'Cannot contact this account...';
+                logger.error(`[Broadcast] [${i + 1}/${targetContacts.length}] Failed ${chatId}: ${errMsg} ❌`);
+                await ContactModel.updateStatus(chatId, 'failed', errMsg);
+
+                // If Telegram triggers PEER_FLOOD, the account is restricted by Telegram spam protection.
+                // Stop immediately to protect remaining pending contacts and avoid a full account ban.
+                if (errMsg.includes('PEER_FLOOD')) {
+                    logger.error('[Broadcast] Telegram PEER_FLOOD restriction detected! Halting broadcast to protect your Telegram account.');
+                    break;
+                }
 
                 // Handle Telegram FloodWait if encountered
                 if (error.seconds) {
                     logger.warn(`[Broadcast] Telegram requested FLOOD_WAIT: sleeping for ${error.seconds}s...`);
                     await randomDelay(error.seconds, error.seconds + 3);
+                } else {
+                    // Safe cooling delay even on failed attempts to prevent Telegram spam rate-limits!
+                    await randomDelay(5, 8);
                 }
             }
         }
