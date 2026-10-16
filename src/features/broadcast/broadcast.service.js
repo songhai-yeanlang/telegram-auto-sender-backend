@@ -103,7 +103,7 @@ const executeBroadcastProcess = async ({ messageText, contactIds, chatIds, image
             } catch (error) {
                 const errMsg = error.message || 'Cannot contact this account...';
                 logger.error(`[Broadcast] [${i + 1}/${targetContacts.length}] Failed ${chatId}: ${errMsg} ❌`);
-                await ContactModel.updateStatus(chatId, 'failed', errMsg);
+                await ContactModel.updateStatus(chatId, 'failed', 'Cannot contact this account...');
 
                 // If Telegram triggers PEER_FLOOD, the account is restricted by Telegram spam protection.
                 // Stop immediately to protect remaining pending contacts and avoid a full account ban.
