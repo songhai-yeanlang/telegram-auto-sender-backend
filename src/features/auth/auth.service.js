@@ -23,10 +23,14 @@ const loginUser = async (body) => {
         throw err;
     }
 
-    const identifier = value.identifier || value.username || value.email;
+    const rawIdentifier = (value.identifier || value.username || value.email || '').trim();
     const { password } = value;
 
-    const admin = await authModel.getAdminByUsernameOrEmail(identifier);
+    let admin = await authModel.getAdminByUsernameOrEmail(rawIdentifier);
+    if (!admin && rawIdentifier.includes('@')) {
+        admin = await authModel.getAdminByEmail(rawIdentifier.toLowerCase());
+    }
+
     if (!admin) {
         const err = new Error('Invalid email or password');
         err.statusCode = 401;
@@ -70,8 +74,12 @@ const forgotPassword = async (body) => {
         throw err;
     }
 
-    const identifier = value.email || value.username;
-    const admin = await authModel.getAdminByUsernameOrEmail(identifier);
+    const identifier = (value.email || value.username || '').trim();
+    let admin = await authModel.getAdminByUsernameOrEmail(identifier);
+    if (!admin && identifier.includes('@')) {
+        admin = await authModel.getAdminByEmail(identifier.toLowerCase());
+    }
+
     if (!admin) {
         // Return generic message for security
         return { message: 'If this account is registered, you will receive an OTP code shortly' };
@@ -99,15 +107,20 @@ const verifyOtp = async (body) => {
         throw err;
     }
 
-    const { email, otp } = value;
-    const admin = await authModel.getAdminByEmail(email);
+    const email = value.email.trim();
+    const { otp } = value;
+    let admin = await authModel.getAdminByEmail(email.toLowerCase());
+    if (!admin) {
+        admin = await authModel.getAdminByEmail(email);
+    }
+
     if (!admin || admin.reset_token !== otp) {
         const err = new Error('Invalid OTP code');
         err.statusCode = 400;
         throw err;
     }
 
-    if (new Date() > new Date(admin.token_expires_at)) {
+    if (admin.token_expires_at && new Date() > new Date(admin.token_expires_at)) {
         const err = new Error('OTP code has expired. Please request a new one');
         err.statusCode = 400;
         throw err;
@@ -162,6 +175,13 @@ const resetPassword = async (body) => {
         throw err;
     }
 
+    // Check expiration timestamp in database
+    if (admin.token_expires_at && new Date() > new Date(admin.token_expires_at)) {
+        const err = new Error('Reset token has expired. Please request a new OTP code');
+        err.statusCode = 400;
+        throw err;
+    }
+
     const salt = await bcrypt.genSalt(10);
     const newPasswordHash = await bcrypt.hash(newPassword, salt);
 
@@ -196,6 +216,13 @@ const changePassword = async (adminId, body) => {
     }
 
     const { oldPassword, newPassword } = value;
+
+    if (oldPassword === newPassword) {
+        const err = new Error('New password must be different from current password');
+        err.statusCode = 400;
+        throw err;
+    }
+
     const admin = await authModel.getAdminById(adminId);
     if (!admin) {
         const err = new Error('Admin account not found');

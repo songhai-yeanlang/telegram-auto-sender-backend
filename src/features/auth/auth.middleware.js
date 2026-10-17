@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const env = require('../../config/env.config');
 const logger = require('../../utils/logger.util');
 
@@ -22,20 +23,21 @@ const isLogin = (req, res, next) => {
 
 const verifyResetToken = (req, res, next) => {
     try {
+        let token = null;
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({
-                success: false,
-                message: 'Unauthorized: Reset token is required in Authorization header (Bearer <token>)'
-            });
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else if (req.body && (req.body.token || req.body.resetToken)) {
+            token = req.body.token || req.body.resetToken;
         }
-        const token = authHeader.split(' ')[1];
+
         if (!token) {
             return res.status(401).json({
                 success: false,
-                message: 'Unauthorized: Reset token is empty'
+                message: 'Unauthorized: Reset token is required'
             });
         }
+
         req.resetToken = token;
         next();
     } catch (error) {
@@ -44,7 +46,44 @@ const verifyResetToken = (req, res, next) => {
     }
 };
 
+// ─── Rate Limiters for Authentication Endpoints ───────────────
+const loginLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 10, // Max 10 attempts per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many login attempts. Please try again after 1 minute.'
+    }
+});
+
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Max 5 requests per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many password reset requests. Please try again after 15 minutes.'
+    }
+});
+
+const verifyOtpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Max 10 attempts per 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        message: 'Too many incorrect OTP attempts. Please wait 15 minutes or request a new code.'
+    }
+});
+
 module.exports = {
     isLogin,
-    verifyResetToken
+    verifyResetToken,
+    loginLimiter,
+    forgotPasswordLimiter,
+    verifyOtpLimiter
 };
